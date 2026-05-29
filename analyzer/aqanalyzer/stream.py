@@ -9,6 +9,7 @@ the Streamlit dashboard build on ``SlidingWindow``.
 from __future__ import annotations
 
 import json
+import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
 
@@ -83,15 +84,28 @@ def consume(brokers: list[str], topic: str, group: str, window: SlidingWindow):
         raise RuntimeError(
             f"kafka client unavailable (install kafka-python-ng): {_KAFKA_IMPORT_ERROR}"
         )
-    consumer = KafkaConsumer(
-        topic,
-        bootstrap_servers=brokers,
-        group_id=group,
-        auto_offset_reset="earliest",  # don't miss aggregates produced before we joined
-        value_deserializer=lambda b: json.loads(b.decode("utf-8")),
-        # No consumer_timeout_ms → block indefinitely waiting for messages
-        # (timeout=0 would make the iterator stop the instant the queue is empty).
-    )
+    # Retry connecting: under docker-compose/k8s the broker may not be ready the
+    # instant we start, so we wait it out instead of crash-looping.
+    from kafka.errors import NoBrokersAvailable
+
+    consumer = None
+    for attempt in range(60):
+        try:
+            consumer = KafkaConsumer(
+                topic,
+                bootstrap_servers=brokers,
+                group_id=group,
+                auto_offset_reset="earliest",  # don't miss aggregates produced before we joined
+                value_deserializer=lambda b: json.loads(b.decode("utf-8")),
+                # No consumer_timeout_ms → block indefinitely waiting for messages
+                # (timeout=0 would make the iterator stop the instant the queue is empty).
+            )
+            break
+        except NoBrokersAvailable:
+            print(f"[stream] broker not ready (attempt {attempt + 1}), retrying in 3s…")
+            time.sleep(3)
+    if consumer is None:
+        raise RuntimeError(f"could not reach Kafka brokers {brokers} after retries")
     for message in consumer:
         agg = message.value
         window.add(agg)

@@ -29,6 +29,19 @@ spec:
             - {name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1"}
             - {name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1"}
             - {name: KAFKA_AUTO_CREATE_TOPICS_ENABLE, value: "true"}
+            # Fixed cluster id + persistent log dir so a container restart does
+            # not reformat KRaft storage (which makes single-node Kafka exit).
+            - {name: CLUSTER_ID, value: "aq-kraft-cluster-000001"}
+            - {name: KAFKA_LOG_DIRS, value: "/var/lib/kafka/data"}
+          volumeMounts:
+            - {name: kafka-data, mountPath: /var/lib/kafka/data}
+          readinessProbe:
+            tcpSocket: {port: 9092}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: kafka-data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
