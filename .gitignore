@@ -20,7 +20,7 @@ venv/
 /data/*.parquet
 /data/*.json
 /data/*.jsonl
-/docs/figures/*.png
+# Interactive HTML figures are regenerated; committed PNGs illustrate the README.
 /docs/figures/*.html
 
 # Editor / OS
