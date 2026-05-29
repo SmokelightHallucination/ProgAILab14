@@ -16,8 +16,11 @@ import polars as pl
 
 try:
     from kafka import KafkaConsumer  # type: ignore
-except ImportError:  # pragma: no cover
+
+    _KAFKA_IMPORT_ERROR = None
+except ImportError as exc:  # pragma: no cover
     KafkaConsumer = None  # allows importing the module without kafka installed
+    _KAFKA_IMPORT_ERROR = exc
 
 
 class SlidingWindow:
@@ -77,7 +80,9 @@ def _parse_ts(value) -> datetime | None:
 def consume(brokers: list[str], topic: str, group: str, window: SlidingWindow):
     """Yield ``(aggregate, window)`` for each message read from Kafka."""
     if KafkaConsumer is None:
-        raise RuntimeError("kafka-python is not installed")
+        raise RuntimeError(
+            f"kafka client unavailable (install kafka-python-ng): {_KAFKA_IMPORT_ERROR}"
+        )
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=brokers,

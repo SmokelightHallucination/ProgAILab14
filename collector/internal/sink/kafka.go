@@ -22,11 +22,12 @@ type KafkaSink struct {
 func NewKafka(brokers []string, topic string) *KafkaSink {
 	return &KafkaSink{
 		w: &kafka.Writer{
-			Addr:         kafka.TCP(brokers...),
-			Topic:        topic,
-			Balancer:     &kafka.Hash{}, // same station → same partition (ordering)
-			BatchTimeout: 200 * time.Millisecond,
-			RequiredAcks: kafka.RequireOne,
+			Addr:                   kafka.TCP(brokers...),
+			Topic:                  topic,
+			Balancer:               &kafka.Hash{}, // same station → same partition (ordering)
+			BatchTimeout:           200 * time.Millisecond,
+			RequiredAcks:           kafka.RequireOne,
+			AllowAutoTopicCreation: true, // create the topic on first publish (no race)
 		},
 	}
 }

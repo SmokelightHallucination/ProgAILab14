@@ -5,5 +5,5 @@ plotly==5.24.1
 pandas==2.2.3
 kaleido==0.2.1
 matplotlib==3.9.2
-kafka-python==2.0.2
+kafka-python-ng==2.2.3
 numpy==2.1.3
