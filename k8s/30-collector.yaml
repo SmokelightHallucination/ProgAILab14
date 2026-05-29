@@ -1,0 +1,61 @@
+# Go collector Deployment. Resource requests are set so the HPA can compute CPU
+# utilisation. Each replica registers in etcd and claims its own station shard,
+# so scaling the Deployment automatically redistributes the load.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: airquality
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: collector}
+  template:
+    metadata:
+      labels: {app: collector}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      containers:
+        - name: collector
+          image: airquality/collector:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {containerPort: 9100, name: metrics}
+            - {containerPort: 8815, name: flight}
+          env:
+            - name: INSTANCE_ID
+              valueFrom:
+                fieldRef: {fieldPath: metadata.name}  # pod name = unique etcd id
+            - {name: SOURCE, value: "synthetic"}
+            - {name: ETCD_ENDPOINTS, value: "etcd:2379"}
+            - {name: KAFKA_ENABLED, value: "true"}
+            - {name: KAFKA_BROKERS, value: "kafka:9092"}
+            - {name: KAFKA_TOPIC, value: "air-quality.aggregates"}
+            - {name: PARQUET_ENABLED, value: "false"}
+            - {name: FLIGHT_ENABLED, value: "false"}
+            - {name: WINDOW_SIZE, value: "10s"}
+            - {name: POLL_INTERVAL, value: "1s"}
+            - {name: METRICS_ADDR, value: "0.0.0.0:9100"}
+          resources:
+            requests: {cpu: "100m", memory: "64Mi"}
+            limits: {cpu: "500m", memory: "128Mi"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 9100}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          # SIGTERM triggers the collector's graceful flush before the pod dies.
+      terminationGracePeriodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: airquality
+  labels: {app: collector}
+spec:
+  selector: {app: collector}
+  ports:
+    - {name: metrics, port: 9100, targetPort: 9100}
+    - {name: flight, port: 8815, targetPort: 8815}

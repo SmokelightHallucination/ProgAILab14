@@ -1,0 +1,40 @@
+# Horizontal Pod Autoscaler for the collector (advanced task #5).
+#
+# Default: scale on CPU utilisation (needs metrics-server, which minikube/k3s
+# ship or enable with `minikube addons enable metrics-server`). As replicas are
+# added/removed, etcd rendezvous hashing redistributes station shards.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collector
+  namespace: airquality
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: collector
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  # --- Alternative / additional: scale on the queue-length custom metric ---
+  # Requires prometheus-adapter exposing aq_queue_length as a pods metric.
+  # Uncomment to scale out when buffered aggregates pile up:
+  #
+  #   - type: Pods
+  #     pods:
+  #       metric:
+  #         name: aq_queue_length
+  #       target:
+  #         type: AverageValue
+  #         averageValue: "50"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
