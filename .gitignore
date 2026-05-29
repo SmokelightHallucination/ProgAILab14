@@ -1,0 +1,34 @@
+# Build artifacts
+/collector/collector
+/collector/*.exe
+/validator/target/
+*.a
+*.so
+*.dll
+*.dylib
+*.lib
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Data / outputs (generated at runtime)
+/data/*.parquet
+/data/*.json
+/data/*.jsonl
+/docs/figures/*.png
+/docs/figures/*.html
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+_pdf_text.txt
+
+# Keep placeholder dirs
+!/data/.gitkeep
+!/docs/figures/.gitkeep
