@@ -109,8 +109,14 @@ async def collect(duration_s: float, poll_interval_s: float = 0.5, window_s: flo
             buckets.clear()
             win_start = now
 
-        next_poll += poll_interval_s
-        await asyncio.sleep(max(0.0, next_poll - time.perf_counter()))
+        # poll_interval_s <= 0 → saturate mode: collect as fast as possible
+        # (used by the benchmark to measure real throughput / CPU, not the
+        # configured polling cadence).
+        if poll_interval_s > 0:
+            next_poll += poll_interval_s
+            await asyncio.sleep(max(0.0, next_poll - time.perf_counter()))
+        else:
+            await asyncio.sleep(0)
 
     flushed_rows.extend(_flush(buckets, win_start, datetime.now(timezone.utc)))
     elapsed = time.perf_counter() - start

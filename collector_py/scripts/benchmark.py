@@ -24,15 +24,31 @@ import urllib.request
 import psutil
 
 
+def _rss_with_children(proc: psutil.Process) -> int:
+    """RSS of the process plus any children (covers subprocess launchers)."""
+    total = proc.memory_info().rss
+    for child in proc.children(recursive=True):
+        try:
+            total += child.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return total
+
+
 def _sample_process(proc: psutil.Process, stop_at: float, interval: float = 0.2):
-    """Return (peak_rss_mb, avg_cpu_pct) while sampling until stop_at."""
+    """Return (peak_rss_mb, avg_cpu_pct) while sampling until stop_at.
+
+    CPU% is normalised to a single core (psutil reports up to ncpu*100 on
+    Windows) so the figure is comparable across machines.
+    """
+    ncpu = psutil.cpu_count() or 1
     peak_rss = 0
     cpu_samples = []
     proc.cpu_percent(None)  # prime
     while time.perf_counter() < stop_at:
         try:
-            peak_rss = max(peak_rss, proc.memory_info().rss)
-            cpu_samples.append(proc.cpu_percent(None))
+            peak_rss = max(peak_rss, _rss_with_children(proc))
+            cpu_samples.append(proc.cpu_percent(None) / ncpu)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             break
         time.sleep(interval)
@@ -61,7 +77,7 @@ def bench_go(duration: float, repo_root: str) -> dict | None:
         return None
 
     env = {**os.environ, "PARQUET_ENABLED": "false", "METRICS_ADDR": "127.0.0.1:9123",
-           "POLL_INTERVAL": "200ms", "WINDOW_SIZE": "5s"}
+           "POLL_INTERVAL": "0s", "WINDOW_SIZE": "5s"}  # saturate mode
     proc = subprocess.Popen([binary], cwd=os.path.join(repo_root, "collector"), env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1.5)  # let metrics server come up
@@ -83,7 +99,7 @@ def bench_go(duration: float, repo_root: str) -> dict | None:
 
 def bench_python(duration: float, repo_root: str) -> dict:
     """Run the Python collector subprocess and measure it."""
-    cmd = [sys.executable, "-m", "scripts.run", "--duration", str(duration), "--poll", "0.2", "--window", "5"]
+    cmd = [sys.executable, "-m", "scripts.run", "--duration", str(duration), "--poll", "0", "--window", "5"]
     proc = subprocess.Popen(cmd, cwd=os.path.join(repo_root, "collector_py"),
                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     p = psutil.Process(proc.pid)
@@ -100,7 +116,14 @@ def write_report(results: list[dict], repo_root: str) -> None:
     md = os.path.join(docs, "benchmark.md")
     with open(md, "w", encoding="utf-8") as f:
         f.write("# Go vs Python collector benchmark\n\n")
-        f.write("Identical synthetic air-quality workload, measured as subprocesses.\n\n")
+        f.write(
+            "Both collectors run the *same* synthetic air-quality workload "
+            "(12 stations × 6 pollutants), in saturate mode (no poll delay), "
+            "validating every reading and rolling it into a 5 s tumbling window. "
+            "Each is launched as a subprocess and sampled with `psutil`; "
+            "throughput is measurements processed per second, CPU is normalised "
+            "to a single core.\n\n"
+        )
         f.write("| Implementation | Throughput (msg/s) | Peak RSS (MB) | Avg CPU (%) |\n")
         f.write("|---|---:|---:|---:|\n")
         for r in results:
@@ -111,6 +134,14 @@ def write_report(results: list[dict], repo_root: str) -> None:
                 f.write(f"\nGo throughput is {go['throughput_msg_s'] / py['throughput_msg_s']:.1f}× Python's; ")
             if go["peak_rss_mb"]:
                 f.write(f"Python RSS is {py['peak_rss_mb'] / go['peak_rss_mb']:.1f}× Go's.\n")
+        f.write(
+            "\n> Note: neither implementation saturates a full core here — the "
+            "per-message work (synthetic generation + validation + window update) "
+            "is cheap, so both are bound by scheduling/yield overhead rather than "
+            "CPU. The headline difference is throughput and memory footprint. "
+            "Numbers vary by machine; regenerate with "
+            "`python -m scripts.benchmark`.\n"
+        )
         f.write("\n![benchmark](figures/benchmark.png)\n")
     print(f"[bench] wrote {md}")
 

@@ -72,7 +72,12 @@ func run(ctx context.Context, cfg config.Config, src source.Source, c coord.Coor
 	assigned := c.Assigned(catalogue)
 	logAssignment(c, len(assigned), len(catalogue))
 
-	poll := time.NewTicker(cfg.PollInterval)
+	// POLL_INTERVAL=0 → saturate mode (max rate); used by the benchmark.
+	pollDur := cfg.PollInterval
+	if pollDur <= 0 {
+		pollDur = time.Microsecond
+	}
+	poll := time.NewTicker(pollDur)
 	defer poll.Stop()
 	// Re-evaluate shard ownership periodically so scale events take effect.
 	reassign := time.NewTicker(5 * time.Second)
