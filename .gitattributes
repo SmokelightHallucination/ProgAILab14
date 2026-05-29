@@ -1,0 +1,5 @@
+# Normalize line endings to LF for all text so the repo is stable across OSes.
+* text=auto eol=lf
+*.png binary
+*.parquet binary
+*.pdf binary
