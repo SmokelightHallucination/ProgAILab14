@@ -9,5 +9,4 @@ data/*.parquet
 data/*.json
 docs/figures/*.html
 *.md
-Лабораторная работа №14.pdf
-promt.txt
+*.pdf
