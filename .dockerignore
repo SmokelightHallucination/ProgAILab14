@@ -1,0 +1,13 @@
+.git
+**/.venv
+**/__pycache__
+validator/target
+collector/collector
+collector/collector.exe
+collector/*.exe
+data/*.parquet
+data/*.json
+docs/figures/*.html
+*.md
+Лабораторная работа №14.pdf
+promt.txt
