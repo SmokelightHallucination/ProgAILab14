@@ -124,5 +124,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: air-quality.aggregates
       WINDOW_MINUTES: 5
+    # Host port 8502 (not 8501): on some Windows hosts 8501 is in WinNAT's
+    # reserved/excluded TCP range and cannot be bound. Container stays on 8501.
     ports:
-      - "8501:8501"
+      - "8502:8501"

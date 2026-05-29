@@ -87,9 +87,10 @@ def consume(brokers: list[str], topic: str, group: str, window: SlidingWindow):
         topic,
         bootstrap_servers=brokers,
         group_id=group,
-        auto_offset_reset="latest",
+        auto_offset_reset="earliest",  # don't miss aggregates produced before we joined
         value_deserializer=lambda b: json.loads(b.decode("utf-8")),
-        consumer_timeout_ms=0,
+        # No consumer_timeout_ms → block indefinitely waiting for messages
+        # (timeout=0 would make the iterator stop the instant the queue is empty).
     )
     for message in consumer:
         agg = message.value
