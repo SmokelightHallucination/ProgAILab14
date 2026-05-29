@@ -1,0 +1,13 @@
+[package]
+name = "aq_validator_py"
+version = "0.1.0"
+edition = "2021"
+
+# cdylib → importable Python extension module `aq_validator` (built by maturin).
+[lib]
+name = "aq_validator"
+crate-type = ["cdylib"]
+
+[dependencies]
+aq_validator_core = { path = "../core" }
+pyo3 = { version = "0.23", features = ["extension-module"] }

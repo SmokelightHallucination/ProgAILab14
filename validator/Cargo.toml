@@ -1,0 +1,12 @@
+# Workspace for the air-quality data validator (advanced task #4).
+#
+#   core/  – pure validation logic, shared by both bindings
+#   ffi/   – C ABI staticlib, linked into the Go collector via cgo
+#   py/    – PyO3 extension module, imported by the Python analyzer
+[workspace]
+resolver = "2"
+members = ["core", "ffi", "py"]
+
+[profile.release]
+lto = true
+codegen-units = 1

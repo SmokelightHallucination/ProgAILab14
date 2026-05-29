@@ -1,0 +1,12 @@
+[package]
+name = "aq_validator_ffi"
+version = "0.1.0"
+edition = "2021"
+
+# staticlib → libaq_validator_ffi.a, linked into the Go collector via cgo.
+[lib]
+name = "aq_validator_ffi"
+crate-type = ["staticlib"]
+
+[dependencies]
+aq_validator_core = { path = "../core" }
