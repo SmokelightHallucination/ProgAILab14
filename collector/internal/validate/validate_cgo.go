@@ -5,7 +5,7 @@ package validate
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../validator/ffi/include
 #cgo LDFLAGS: -L${SRCDIR}/../../../validator/target/release -laq_validator_ffi
-#cgo linux LDFLAGS: -lm
+#cgo linux LDFLAGS: -lm -ldl -lpthread
 #include <stdlib.h>
 #include "aq_validator.h"
 */

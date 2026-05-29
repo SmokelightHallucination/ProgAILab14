@@ -84,10 +84,11 @@ def main() -> None:
         st.rerun()
         return
 
+    # Most recent aggregate per (station, pollutant).
     latest = (
         df.sort("window_end")
         .group_by("location_id", "location", "city", "country", "parameter")
-        .agg(pl.all().last())
+        .last()
     )
     pm = latest.filter(pl.col("parameter") == "pm25")
 
